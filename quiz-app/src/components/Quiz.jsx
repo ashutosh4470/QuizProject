@@ -13,9 +13,7 @@ export const Quiz = () => {
     const state = useSelector(state=>state);
     const {queue,trace} = useSelector(state => state.questions)
     const dispatch = useDispatch();
-    useEffect(()=>{
-        console.log(state);
-    })
+
 
     function onPrev(){
         // console.log("On Previous");
@@ -27,8 +25,14 @@ export const Quiz = () => {
         //update trace value by one by using moveNext function
         if(trace < queue.length){
             dispatch(moveNextQuestion());
-            dispatch(pushAnswer(check))
+
+            //insert new result in the array
+            if(result.length <=trace){
+                dispatch(pushAnswer(check))
+            }
         }
+        //reset the value of the check variable
+        setChecked(undefined)
     }
 
     const onChecked = (check)=>{
@@ -48,7 +52,7 @@ export const Quiz = () => {
             < Question onChecked={onChecked}/>
 
             <div className="grid"> 
-                <button className="btn prev" onClick={onPrev}>Previous</button>
+            { trace > 0 ? <button className='btn prev' onClick={onPrev}>Prev</button> : <div></div>}
                 <button className="btn next" onClick={onNext}>Next</button>
             </div>
         </div>
