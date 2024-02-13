@@ -5,11 +5,21 @@ import { Main } from './Main';
 import { Quiz } from './Quiz';
 import { Result } from './Result';
 import { CheckUserExist } from '../helper/helper';
+import {Register} from './Register';
+import Login from './Login';
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <Main />
+  },
+   {
+    path: '/register',
+    element: <Register />
+  }, 
+  {
+    path: '/login',
+    element: <Login />
   },
   {
     path: '/quiz',
