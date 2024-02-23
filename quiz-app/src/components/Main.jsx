@@ -1,31 +1,38 @@
-import React, { useRef } from 'react'
-import { Link } from 'react-router-dom'
-import '../styles/Main.css'
-import { useDispatch } from 'react-redux';
-import { setUserId } from '../redux/result_reducer';
+// Main.js
+
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import '../styles/Main.css';
 export const Main = () => {
+  // const location = useLocation();
+  // const user = location.state?.user;
+  // const [topic ,setTopic] = useState();
+  const navigate = useNavigate(); 
 
-    const inputRef = useRef(null);
-    const dispatch = useDispatch();
+  const handleTopicSelection = async (topic) => {
+  try {  
+  navigate('/instruction', { state: { topic: topic } });
+  // navigate('/quiz', { state: { topic: topic } });
+  } catch (error) {
+    console.error('Error navigating to quiz component:', error);
+  }
+};
 
-    function startQuiz(){
-      if(inputRef.current?.value){  
-        dispatch(setUserId(inputRef.current?.value))
-      }
-    }
+const topics = ['HTML','CSS','JavaScript','Java','Python','PHP','Csharp','ReactJS']
+
   return (
-
-    <div className='container'>
-    <h1 className='title text-secondary'>Quiz Application</h1>
-
-    <form id='form'>
-        <input ref={inputRef} className='userid' type='text' placeholder='Username'/>
-    </form>
-    <div className="start">
-        <Link className='btn' to={'quiz'} onClick={startQuiz}>Start Quiz</Link>
+    <>
+    <p className='h2'>
+      Subjects
+  <small class="text-muted"> for start Quiz</small>
+</p>
+    <div className="main-container">
+    {topics?.map((item)=>{
+      return (
+           <span className="topic" onClick={() => handleTopicSelection(item)}>{item}</span>
+      )
+    })}
     </div>
-
-</div> 
-
-  )
-}
+        </>
+    )
+};

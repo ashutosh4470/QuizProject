@@ -1,60 +1,163 @@
-import React, { useEffect, useState } from 'react'
-import '../styles/Main.css'
-import { Question } from './Question';
-import { moveNextQuestion , movePrevQuestion} from '../hooks/fetchQuestions';
-import { pushAnswer } from '../hooks/setResult';
-import { Navigate } from 'react-router-dom';
-// import redux store
-import { useSelector ,useDispatch} from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import '../styles/Quiz.css'; // Import external CSS file
+import { useLocation, useNavigate } from 'react-router-dom';
 
-export const Quiz = () => {
-    const [check,setChecked] = useState(undefined);
-    const result = useSelector(state => state.result.result)
-    const state = useSelector(state=>state);
-    const {queue,trace} = useSelector(state => state.questions)
-    const dispatch = useDispatch();
+import Countdown from './Countdown';
 
+function Quiz() {
+    const [questions, setQuestions] = useState([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [selectedOptions, setSelectedOptions] = useState(Array(4).fill("")); // Initialize with empty strings
+    const [answers, setAnswers] = useState({}); // Object to store selected answers
+    const [userSelectedOptions, setUserSelectedOptions] = useState([]); // Array to hold user's selected options
+    const [testSubmitted,setTestSubmitted] = useState(false);
+    const [questionNo, setQuestionNo] = useState(1);
+    const location = useLocation();
+    const navigate = useNavigate();
 
-    function onPrev(){
-        // console.log("On Previous");
-        if(trace > 0){
-            dispatch(movePrevQuestion());
-        }
-    }
-    function onNext(){
-        //update trace value by one by using moveNext function
-        if(trace < queue.length){
-            dispatch(moveNextQuestion());
-
-            //insert new result in the array
-            if(result.length <=trace){
-                dispatch(pushAnswer(check))
+    const topicName = (location.state?.topic).toLowerCase();
+    useEffect(() => {
+        const fetchQuestions = async () => {
+            try {
+                const topic = location.state?.topic;
+                if (!topic) return;
+                const response = await axios.get(`http://localhost:5000/api/questions/${topicName}`);
+                setQuestions(response.data);
+            } catch (error) {
+                console.error('Error fetching questions:', error);
             }
+        };
+
+        fetchQuestions();
+    }, [location]);
+
+    const handleOptionChange = (event) => {
+        const newSelectedOptions = [...selectedOptions];
+        newSelectedOptions[currentQuestionIndex] = event.target.value;
+        setSelectedOptions(newSelectedOptions);
+    };
+
+    const handleNextQuestion = () => {
+        const newAnswers = { ...answers, [currentQuestionIndex]: selectedOptions[currentQuestionIndex] };
+        setAnswers(newAnswers);
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setQuestionNo(questionNo + 1);
+    };
+
+    const handlePrevQuestion = () => {
+        setCurrentQuestionIndex(currentQuestionIndex - 1);
+        setQuestionNo(questionNo - 1);
+
+    };
+
+    const handleSubmit = () => {
+        const newAnswers = { ...answers, [currentQuestionIndex]: selectedOptions[currentQuestionIndex] };
+        setAnswers(newAnswers);
+        
+        // Compare selected options with correct answers
+        const correctAnswers = questions.map(question => question.correct_answer);
+
+        // const explanation = questions.map(question => question.explanation);
+        const userSelectedAnswers = Object.values(newAnswers);
+
+        // Count the number of correct answers
+        let correctCount = 0;
+        userSelectedAnswers.forEach((selectedAnswer, index) => {
+            if (selectedAnswer === correctAnswers[index]) {
+                correctCount++;
+            }
+        });        
+        
+        alert("Test submitted!");
+        setTestSubmitted(true);
+
+        const finalscore = Math.round((correctCount / questions.length) * 100);
+        navigate('/result', { state: { questions, selectedOptions , score:finalscore} });
+        const archived = ()=>{
+            if(finalscore<40)
+                return "Failed";
+            if(finalscore >= 40 && finalscore <= 100 )
+                return "Passed";
         }
-        //reset the value of the check variable
-        setChecked(undefined)
+        handleSendData(finalscore,archived);
+        
+    };
+
+
+    const handleSendData = async(score,achived) =>{
+
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        const username = user.name;
+        const quizData = {
+            username:username,
+            obtainedMarks:{
+                [topicName]:score
+            },
+            achived:achived
+        }
+
+        const response = await axios.post('http://localhost:5000/api/result',quizData);
     }
 
-    const onChecked = (check)=>{
-        console.log(check);
-        setChecked(check);
-    }
-
-    // Finished Exam after last Question
-    if(result.length && result.length >= queue.length){
-        return <Navigate to={"/result"} replace={true} />
-    }
 
     return (
-        <div className='container'>
-            <h1 className='title text-secondary'>Quiz Application</h1>
+        <div className="quiz-main">
+        {!testSubmitted && <Countdown seconds={120} onCountdownEnd={handleSubmit} />}
+        <div className="quiz-container">
+            {/* calling the countdown component */}
 
-            < Question onChecked={onChecked}/>
+            {questions.length > 0 && currentQuestionIndex < questions.length ? (
+                <div className="question-container">
+                    <h6 className='h6'>{questionNo}) {questions[currentQuestionIndex].question}</h6>
+                    <ul className='ul'>
+                        {questions[currentQuestionIndex].options.map((option, index) => (
+                            <li key={index} className='options'>
+                                <label className='label'>
+                                    <input className='input'
+                                        type="radio"
+                                        name="options"
+                                        value={option}
+                                        checked={selectedOptions[currentQuestionIndex] === option}
+                                        onChange={handleOptionChange}
+                                        required
+                                    />
+                                    {option}
+                                </label>
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="button-container">
+                        {currentQuestionIndex > 0 && (
+                            <button className='button' id='prev-btn' onClick={handlePrevQuestion}>Previous</button>
+                        )}
+                        {currentQuestionIndex === questions.length - 1 ? (
+                            <button className='button' id='submit-btn' onClick={handleSubmit}>Submit</button>
+                        ) : (
+                            <button className='button' id='next-btn' onClick={handleNextQuestion}>Next</button>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <p>Loading questions...</p>
+            )}
 
-            <div className="grid"> 
-            { trace > 0 ? <button className='btn prev' onClick={onPrev}>Prev</button> : <div></div>}
-                <button className="btn next" onClick={onNext}>Next</button>
-            </div>
+            {/* Display selected answers at the end of the quiz */}
+            {currentQuestionIndex === questions.length && (
+                <div className="answer-container">
+                    <h3 className='h3'>Selected Answers:</h3>
+                    <ul className='ul'>
+                        {Object.entries(answers).map(([questionIndex, selectedAnswer]) => (
+                            <li className='li' key={questionIndex}>
+                                Question {parseInt(questionIndex) + 1}: {selectedAnswer}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
-    )
+        </div>
+    );
 }
+
+export default Quiz;
